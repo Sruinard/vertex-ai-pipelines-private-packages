@@ -1,0 +1,18 @@
+steps:
+  - name: python:3.10
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        pip install poetry
+        poetry self update
+        poetry add keyrings.google-artifactregistry-auth
+        poetry config repositories.${_REPOSITORY} https://${_LOCATION}-python.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/
+        poetry build -f sdist
+        poetry publish --repository ${_REPOSITORY}
+    id: "Build and publish package"
+
+substitutions:
+  _PROJECT_ID: "my-project-d"
+  _LOCATION: "us-central1"
+  _REPOSITORY: "my-repo"

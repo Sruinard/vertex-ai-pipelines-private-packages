@@ -1,0 +1,121 @@
+{
+  "components": {
+    "comp-build-airports-dataset-op": {
+      "executorLabel": "exec-build-airports-dataset-op",
+      "outputDefinitions": {
+        "artifacts": {
+          "output_dataset": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-train-model-op": {
+      "executorLabel": "exec-train-model-op",
+      "inputDefinitions": {
+        "artifacts": {
+          "input_dataset": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-build-airports-dataset-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "build_airports_dataset_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location --index-url https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --trusted-host https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --extra-index-url https://pypi.org/simple --trusted-host https://pypi.org/simple 'kfp==2.6.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location --index-url https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --trusted-host https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --extra-index-url https://pypi.org/simple --trusted-host https://pypi.org/simple 'airline_ml==1.0.7' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef build_airports_dataset_op(output_dataset: Output[Dataset]):\n    from airline_ml.business.logic import Dataset, Airport, DatasetRepository\n\n    airports = [\n        Airport(name=\"John F. Kennedy International Airport\", country=\"United States\"),\n        Airport(name=\"Los Angeles International Airport\", country=\"United States\"),\n        Airport(name=\"O'Hare International Airport\", country=\"United States\"),\n        Airport(name=\"Hartsfield-Jackson Atlanta International Airport\", country=\"United States\"),\n        Airport(name=\"San Francisco International Airport\", country=\"United States\"),\n        Airport(name=\"Heathrow Airport\", country=\"United Kingdom\"),\n        Airport(name=\"Tokyo Haneda Airport\", country=\"Japan\"),\n        Airport(name=\"Dubai International Airport\", country=\"United Arab Emirates\"),\n        Airport(name=\"Charles de Gaulle Airport\", country=\"France\"),\n        Airport(name=\"Singapore Changi Airport\", country=\"Singapore\"),\n        Airport(name=\"Sydney Airport\", country=\"Australia\"),\n        Airport(name=\"Frankfurt Airport\", country=\"Germany\"),\n        Airport(name=\"Hong Kong International Airport\", country=\"Hong Kong\"),\n        Airport(name=\"Amsterdam Airport Schiphol\", country=\"Netherlands\")\n    ]\n\n    # Create a Dataset instance and filter American airports\n    dataset = Dataset(airports)\n    american_airports_dataset = dataset.build()\n\n    # Save the dataset using the repository\n    DatasetRepository.save_to_path(american_airports_dataset, output_dataset.path)\n\n"
+          ],
+          "image": "python:3.10"
+        }
+      },
+      "exec-train-model-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "train_model_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location --index-url https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --trusted-host https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --extra-index-url https://pypi.org/simple --trusted-host https://pypi.org/simple 'kfp==2.6.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location --index-url https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --trusted-host https://us-west1-python.pkg.dev/gcp-onboarding-project-ruinard/vertex-ai-ruinard/simple --extra-index-url https://pypi.org/simple --trusted-host https://pypi.org/simple 'airline_ml==1.0.7' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model_op(input_dataset: Input[Dataset]):\n    from airline_ml.business.logic import DatasetRepository\n    from airline_ml.trainer.train import Trainer\n\n    # Load the dataset using the repository\n    dataset = DatasetRepository.load_from_path(input_dataset.path)\n\n    # Create a trainer and train the model\n    trainer = Trainer(dataset)\n    trainer.train(dataset)\n\n    print(f\"Total number of samples in the dataset: {len(dataset)}\")\n\n"
+          ],
+          "image": "python:3.10"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "description": "A pipeline to process airports and train a model",
+    "name": "airport-processing-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "build-airports-dataset-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-build-airports-dataset-op"
+          },
+          "taskInfo": {
+            "name": "build-airports-dataset-op"
+          }
+        },
+        "train-model-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-train-model-op"
+          },
+          "dependentTasks": [
+            "build-airports-dataset-op"
+          ],
+          "inputs": {
+            "artifacts": {
+              "input_dataset": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "output_dataset",
+                  "producerTask": "build-airports-dataset-op"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "train-model-op"
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.6.0"
+}
